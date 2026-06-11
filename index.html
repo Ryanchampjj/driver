@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>คิวงานคนขับ — Thai International Hospital</title>
+<meta name="theme-color" content="#E5331E">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="คิวคนขับ">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icon.png">
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;}
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+       background:linear-gradient(135deg,#E5331E 0%,#FF7A3D 100%);color:#fff;text-align:center;
+       font-family:'Noto Sans Thai','Tahoma',sans-serif;-webkit-tap-highlight-color:transparent;padding:24px;}
+  .container{max-width:420px;width:100%;}
+  .icon-box{width:120px;height:120px;margin:0 auto 22px;background:#0e0e10;border-radius:26px;
+            box-shadow:0 10px 30px rgba(0,0,0,.35);overflow:hidden;display:flex;align-items:center;justify-content:center;}
+  .icon-box img{width:100%;height:100%;object-fit:contain;}
+  h1{margin:0 0 8px;font-size:26px;font-weight:800;}
+  .subtitle{font-size:14px;opacity:.95;margin-bottom:30px;line-height:1.45;}
+  .btn{display:block;width:100%;padding:16px 24px;margin-bottom:12px;border:none;border-radius:14px;
+       font-size:17px;font-weight:800;text-decoration:none;cursor:pointer;font-family:inherit;
+       box-shadow:0 4px 12px rgba(0,0,0,.15);transition:transform .1s,opacity .2s;}
+  .btn:active{transform:scale(.97);}
+  .btn-open{background:#fff;color:#E5331E;}
+  .btn-open[disabled]{opacity:.5;pointer-events:none;}
+  .btn-install{background:#ffd54a;color:#5a3d00;display:none;}
+  .hint{margin-top:24px;font-size:13.5px;opacity:.95;line-height:1.7;background:rgba(0,0,0,.18);
+        padding:15px 16px;border-radius:13px;text-align:left;}
+  .hint b{font-weight:700;}
+  .hint .step{display:flex;gap:8px;margin-top:6px;}
+  .hint .step span:first-child{flex-shrink:0;}
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon-box"><img src="icon.png" alt="ไอคอนคิวงานคนขับ"></div>
+    <h1>คิวงานคนขับ</h1>
+    <div class="subtitle">Thai International Hospital · เกาะพะงัน<br>ระบบขอใช้รถ — สำหรับ พขร (คนขับ)</div>
+
+    <button class="btn btn-install" id="installBtn">⬇️ ติดตั้งแอปบนเครื่อง</button>
+    <a class="btn btn-open" id="openBtn" href="#">🚗 เปิดคิวงานคนขับ</a>
+
+    <div class="hint" id="hint"></div>
+  </div>
+
+<script>
+  // ===== แก้ลิงก์เว็บแอป (URL /exec จาก Deploy ของ Apps Script) ตรงนี้ =====
+  var APP_URL = "https://script.google.com/macros/s/AKfycbyeeGoVjCFsqno3gh3TKphiD7X18cSa7OOh7Gu8EIMCCJw54LkpD0_jiZJvK_59I2uN/exec?p=driver";
+
+  var ua = navigator.userAgent || '';
+  var standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  var isIOS = /iphone|ipad|ipod/i.test(ua);
+  var isAndroid = /android/i.test(ua);
+  var isLine = /\bLine\//i.test(ua);
+  var isSafari = /safari/i.test(ua) && !/crios|fxios|chrome|edg/i.test(ua);
+
+  var openBtn = document.getElementById('openBtn');
+  var installBtn = document.getElementById('installBtn');
+  var hint = document.getElementById('hint');
+  openBtn.href = APP_URL;
+
+  // ลงทะเบียน service worker (ให้ Chrome ปลดล็อกปุ่มติดตั้ง)
+  if ('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js').catch(function(){}); }
+
+  // ปุ่มติดตั้งของ Android Chrome (beforeinstallprompt)
+  var deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', function(e){
+    e.preventDefault(); deferredPrompt = e; installBtn.style.display = 'block';
+  });
+  installBtn.addEventListener('click', function(){
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(function(){ deferredPrompt = null; installBtn.style.display = 'none'; });
+  });
+
+  // ปุ่มเปิดแอป: ถ้ายังไม่ได้ติดตั้ง หน่วง 4 วิให้ manifest โหลดทันก่อน (กันไอคอนพัง)
+  function enableOpen(){ openBtn.removeAttribute('disabled'); openBtn.textContent = '🚗 เปิดคิวงานคนขับ'; }
+  if (standalone){
+    enableOpen();
+  } else {
+    openBtn.setAttribute('disabled','');
+    var n = 4;
+    openBtn.textContent = '🚗 เปิดคิวงานคนขับ (' + n + ')';
+    var t = setInterval(function(){
+      n--; if (n <= 0){ clearInterval(t); enableOpen(); }
+      else openBtn.textContent = '🚗 เปิดคิวงานคนขับ (' + n + ')';
+    }, 1000);
+  }
+
+  // คำแนะนำติดตั้งตามอุปกรณ์
+  var msg = '';
+  if (standalone){
+    msg = '✅ <b>ติดตั้งแล้ว</b> — กด "เปิดคิวงานคนขับ" เพื่อเริ่มใช้งานได้เลย';
+  } else if (isLine){
+    msg = '📲 <b>เปิดในเบราว์เซอร์ก่อน</b><br>กดเมนู ⋯ มุมขวาบน → "เปิดด้วยเบราว์เซอร์อื่น" (Safari/Chrome) แล้วค่อยติดตั้ง';
+  } else if (isIOS){
+    msg = isSafari
+      ? '📲 <b>ติดตั้งบน iPhone:</b><div class="step"><span>1.</span><span>กดปุ่ม แชร์ (ไอคอนสี่เหลี่ยมมีลูกศรขึ้น)</span></div><div class="step"><span>2.</span><span>เลือก "เพิ่มไปยังหน้าจอเริ่มต้น"</span></div>'
+      : '📲 <b>iPhone ต้องใช้ Safari</b><br>ก็อปลิงก์นี้ไปเปิดใน Safari แล้วทำตามขั้นตอน เพิ่มลงหน้าจอโฮม';
+  } else if (isAndroid){
+    msg = '📲 <b>ติดตั้งบน Android:</b><br>รอปุ่มเหลือง "⬇️ ติดตั้งแอปบนเครื่อง" สักครู่แล้วกด<br>หรือเมนู ⋮ → "เพิ่มลงในหน้าจอหลัก"';
+  } else {
+    msg = '💻 เปิดบนมือถือเพื่อติดตั้งเป็นแอป หรือกด "เปิดคิวงานคนขับ" เพื่อใช้งานบนเครื่องนี้';
+  }
+  hint.innerHTML = msg;
+</script>
+</body>
+</html>
